@@ -33,6 +33,11 @@ import os
 import sys
 import time
 
+import ConfigParser as configparser
+import tornado.web
+import tornado.options
+import numpy as np
+
 from caffe2.python import workspace
 
 from core.config import assert_and_infer_cfg
@@ -53,78 +58,50 @@ cv2.ocl.setUseOpenCL(False)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='End-to-end inference')
-    parser.add_argument(
-        '--cfg',
-        dest='cfg',
-        help='cfg model file (/path/to/model_config.yaml)',
-        default=None,
-        type=str
-    )
-    parser.add_argument(
-        '--wts',
-        dest='weights',
-        help='weights model file (/path/to/model_weights.pkl)',
-        default=None,
-        type=str
-    )
-    parser.add_argument(
-        '--output-dir',
-        dest='output_dir',
-        help='directory for visualization pdfs (default: /tmp/infer_simple)',
-        default='/tmp/infer_simple',
-        type=str
-    )
-    parser.add_argument(
-        '--image-ext',
-        dest='image_ext',
-        help='image file name extension (default: jpg)',
-        default='jpg',
-        type=str
-    )
-    parser.add_argument(
-        'im_or_folder', help='image or folder of images', default=None
-    )
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
     return parser.parse_args()
 
+def read_config():
+    config = configparser.ConfigParser()
+    config.readfp(open(os.path.join(os.path.dirname(__file__), 'config.ini')))
+    return config
 
-def main(args):
-    logger = logging.getLogger(__name__)
-    merge_cfg_from_file(args.cfg)
-    cfg.TEST.WEIGHTS = args.weights
-    cfg.NUM_GPUS = 1
-    assert_and_infer_cfg()
-    model = infer_engine.initialize_model_from_cfg()
-    dummy_coco_dataset = dummy_datasets.get_coco_dataset()
+class Application(tornado.web.Application):
+    def __init__(self, config, **kwargs):
+        kwargs['handlers'] = [
+            (r'/analyse', AnalyseHandler)
+        ]
+        super(Application, self).__init__(**kwargs)
+        merge_cfg_from_file(config.get('DETECTRON', 'CONFIG'))
+        cfg.TEST.WEIGHTS = config.get('DETECTRON', 'WEIGHTS')
+        cfg.NUM_GPUS = 1
+        assert_and_infer_cfg()
+        self.model = infer_engine.initialize_model_from_cfg()
+#        dummy_coco_dataset = dummy_datasets.get_coco_dataset()      
 
-    if os.path.isdir(args.im_or_folder):
-        im_list = glob.iglob(args.im_or_folder + '/*.' + args.image_ext)
-    else:
-        im_list = [args.im_or_folder]
-
-    for i, im_name in enumerate(im_list):
-        out_name = os.path.join(
-            args.output_dir, '{}'.format(os.path.basename(im_name) + '.pdf')
-        )
-        logger.info('Processing {} -> {}'.format(im_name, out_name))
-        im = cv2.imread(im_name)
+class AnalyseHandler(tornado.web.RequestHandler):
+    def post(self):
+        if 'image' not in self.request.files:
+            raise tornado.web.HTTPError(400, "missing field 'image'")
+        image = self.request.files['image'][0]
+        if not image['content_type'].startswith('image/'):
+            raise tornado.web.HTTPError(400, "wrong content-type '{}'. Expecting 'image/*'".format(image['content_type']))
+        
+        nparr = np.fromstring(image['body'], np.uint8)
+        im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         timers = defaultdict(Timer)
-        t = time.time()
-        with c2_utils.NamedCudaScope(0):
-            cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
-                model, im, None, timers=timers
-            )
-        logger.info('Inference time: {:.3f}s'.format(time.time() - t))
-        for k, v in timers.items():
-            logger.info(' | {}: {:.3f}s'.format(k, v.average_time))
-        if i == 0:
-            logger.info(
-                ' \ Note: inference on the first image will be slower than the '
-                'rest (caches and auto-tuning need to warm up)'
-            )
-
+        try:
+            with c2_utils.NamedCudaScope(0):
+                cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
+                    self.application.model, im, None, timers=timers
+                )
+        except Exception as e:
+            print(e)
+            raise tornado.web.HTTPError(500)
+        print(cls_boxes)
+        print(cls_segms)
+        print(cls_keyps)
+        print(timers)
+        return
         vis_utils.vis_one_image(
             im[:, :, ::-1],  # BGR -> RGB for visualization
             im_name,
@@ -140,8 +117,18 @@ def main(args):
         )
 
 
+def main(args, config):
+    logger = logging.getLogger(__name__)
+
+    tornado.options.parse_command_line()
+    application = Application(config, debug=True, autoreload=True)
+    http_server = tornado.httpserver.HTTPServer(application)
+    http_server.listen(config.getint('SERVICE', 'PORT'))
+    tornado.ioloop.IOLoop.instance().start()
+
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])
     utils.logging.setup_logging(__name__)
+    config = read_config()
     args = parse_args()
-    main(args)
+    main(args, config)
