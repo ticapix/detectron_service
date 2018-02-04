@@ -4,7 +4,7 @@ The detailled version of https://hackernoon.com/how-to-use-detectron-facebooks-f
 
 ## OS
 
-I've used Ubuntu 16.04
+I've used Ubuntu 16.04 on top of a [G2-15](https://www.ovh.com/fr/public-cloud/instances/tarifs/) OVH virtual machine.
 
 ## Dependencies
 
@@ -82,6 +82,3 @@ git clone https://github.com/ticapix/detectron_service.git && cd detectron_servi
 make install
 make run
 ```
-
-export PYTHONPATH=/usr/local
-export LD_LIBRARY_PATH=/usr/local/lib
