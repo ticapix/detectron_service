@@ -1,4 +1,6 @@
-# detectron_service
+# Detectron Web Service
+
+Just a small python web service wrapping a setup of [Facebook Detectron](https://github.com/facebookresearch/Detectron) project.
 
 ## Usage
 
@@ -12,8 +14,9 @@ curl -v -F image=@parking.jpg http://detectron.ticapix.ovh:8080/analyse -o test.
 
 ### OS
 
-I've used Ubuntu 16.04 on top of a [G2-15](https://www.ovh.com/fr/public-cloud/instances/tarifs/) OVH virtual machine.
-The detailled version of https://hackernoon.com/how-to-use-detectron-facebooks-free-platform-for-object-detection-9d41e170bbcb
+I've used Ubuntu 16.04 on top of a [G2-15](https://www.ovh.com/fr/public-cloud/instances/tarifs/) OVH virtual machine and followed https://hackernoon.com/how-to-use-detectron-facebooks-free-platform-for-object-detection-9d41e170bbcb.
+
+Detailled version below:
 
 ### Basics
 
