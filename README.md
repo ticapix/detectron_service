@@ -1,12 +1,21 @@
 # detectron_service
 
-The detailled version of https://hackernoon.com/how-to-use-detectron-facebooks-free-platform-for-object-detection-9d41e170bbcb
+## Usage
 
-## OS
+```sh
+curl -v -F image=@parking.jpg http://detectron.ticapix.ovh:8080/analyse -o test.png
+```
 
-I've used Ubuntu 16.04 on top of a [G2-15](https://www.ovh.com/fr/public-cloud/instances/tarifs/) OVH virtual machine.
+![output](test.png)
 
 ## Dependencies
+
+### OS
+
+I've used Ubuntu 16.04 on top of a [G2-15](https://www.ovh.com/fr/public-cloud/instances/tarifs/) OVH virtual machine.
+The detailled version of https://hackernoon.com/how-to-use-detectron-facebooks-free-platform-for-object-detection-9d41e170bbcb
+
+### Basics
 
 ```sh
 sudo apt-get install cmake build-essential python-pip
@@ -81,10 +90,4 @@ cd lib && make && cd ..
 git clone https://github.com/ticapix/detectron_service.git && cd detectron_service
 make install
 make run
-```
-
-# Usage
-
-```sh
-curl -v -F image=@ovh_parking.jpg http://detectron.ticapix.ovh:8080/analyse -o test.png
 ```
