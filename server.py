@@ -76,8 +76,8 @@ class Application(tornado.web.Application):
         cfg.NUM_GPUS = 1
         assert_and_infer_cfg()
         self.model = infer_engine.initialize_model_from_cfg()
-#        dummy_coco_dataset = dummy_datasets.get_coco_dataset()      
-
+        self.dummy_coco_dataset = dummy_datasets.get_coco_dataset()
+        
 class AnalyseHandler(tornado.web.RequestHandler):
     def post(self):
         if 'image' not in self.request.files:
@@ -97,24 +97,23 @@ class AnalyseHandler(tornado.web.RequestHandler):
         except Exception as e:
             print(e)
             raise tornado.web.HTTPError(500)
-        print(cls_boxes)
-        print(cls_segms)
-        print(cls_keyps)
-        print(timers)
-        return
-        vis_utils.vis_one_image(
+
+        output = vis_utils.vis_one_image(
             im[:, :, ::-1],  # BGR -> RGB for visualization
-            im_name,
-            args.output_dir,
+            'output',
+            '/tmp/',
             cls_boxes,
             cls_segms,
             cls_keyps,
-            dataset=dummy_coco_dataset,
-            box_alpha=0.3,
+            dataset=self.application.dummy_coco_dataset,
             show_class=True,
             thresh=0.7,
-            kp_thresh=2
+            kp_thresh=2,
+            ext='png'
         )
+        with open('/tmp/output.png', 'rb') as fd:
+            self.write(fd.read())
+        self.finish()
 
 
 def main(args, config):
