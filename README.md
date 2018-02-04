@@ -63,7 +63,7 @@ cd cocoapi/PythonAPI
 sudo make install
 ```
 
-## Detectron
+### Detectron
 
 ```sh
 sudo pip install numpy pyyaml matplotlib opencv-python>=3.0 setuptools Cython mock scipy
@@ -81,4 +81,10 @@ cd lib && make && cd ..
 git clone https://github.com/ticapix/detectron_service.git && cd detectron_service
 make install
 make run
+```
+
+# Usage
+
+```sh
+curl -v -F image=@ovh_parking.jpg http://detectron.ticapix.ovh:8080/analyse -o test.png
 ```
